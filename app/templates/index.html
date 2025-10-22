@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>docker-srt-folders</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 2rem auto; max-width: 960px; }
+      header { margin-bottom: 2rem; }
+      form fieldset { border: 1px solid #ddd; padding: 1rem; margin-bottom: 1.5rem; }
+      form legend { font-weight: 600; }
+      .directories { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 0.5rem; }
+      .results { border-collapse: collapse; width: 100%; }
+      .results th, .results td { padding: 0.5rem; border: 1px solid #ddd; text-align: left; }
+      .results th { background-color: #f3f3f3; }
+      .status-ok { color: #1f7a1f; }
+      .status-error { color: #b22222; }
+      .flash { padding: 0.75rem 1rem; border-radius: 4px; margin-bottom: 1rem; }
+      .flash.warning { background-color: #fff8e1; border: 1px solid #ffe082; }
+      .flash.danger { background-color: #ffebee; border: 1px solid #ffcdd2; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>docker-srt-folders</h1>
+      <p>Generate subtitles with <a href="https://github.com/SYSTRAN/faster-whisper">faster-whisper</a> inside a Docker container.</p>
+    </header>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="flash {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <form method="post">
+      <fieldset>
+        <legend>Select folders from {{ base_directory }}</legend>
+        {% if available_directories %}
+          <div class="directories">
+            {% for directory in available_directories %}
+              <label><input type="checkbox" name="directories" value="{{ directory }}"> {{ directory }}</label>
+            {% endfor %}
+          </div>
+        {% else %}
+          <p>No folders found. Mount media folders into <code>{{ base_directory }}</code> or use the custom path field below.</p>
+        {% endif %}
+      </fieldset>
+
+      <fieldset>
+        <legend>Additional options</legend>
+        <label>
+          <input type="checkbox" name="recursive" checked>
+          Scan folders recursively
+        </label>
+        <br>
+        <label>
+          <input type="checkbox" name="overwrite">
+          Overwrite existing subtitles
+        </label>
+        <br>
+        <label>
+          Extra folder path:
+          <input type="text" name="extra_path" placeholder="/network/share/videos">
+        </label>
+      </fieldset>
+
+      <button type="submit">Create subtitles</button>
+    </form>
+
+    {% if results %}
+      <section>
+        <h2>Transcription results</h2>
+        <table class="results">
+          <thead>
+            <tr>
+              <th>Source file</th>
+              <th>Subtitle file</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for result in results %}
+              <tr>
+                <td>{{ result.source }}</td>
+                <td>{% if result.output %}{{ result.output }}{% else %}—{% endif %}</td>
+                <td class="{{ 'status-ok' if result.created else 'status-error' if not result.output else '' }}">{{ result.message }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    {% endif %}
+  </body>
+</html>
