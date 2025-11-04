@@ -13,6 +13,7 @@ def parse_args() -> argparse.Namespace:
         "directories",
         nargs="+",
         help="One or more directories to scan for media files.",
+        default=os.environ.get("SUBTITLE_BASE_DIR", "/data"),
     )
     parser.add_argument(
         "--no-recursive",
@@ -28,7 +29,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--model-size",
-        default=os.environ.get("SUBTITLE_MODEL_SIZE", "small"),
+        default=os.environ.get("SUBTITLE_MODEL_SIZE", "large-v3"),
         help="Whisper model size to use (default: %(default)s).",
     )
     parser.add_argument(

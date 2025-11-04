@@ -44,7 +44,7 @@ streams.
    docker run \
      --rm \
      -p 8000:8000 \
-     -v /path/to/local/media:/data/media \
+         -v /path/to/local/media:/data/media \
      docker-srt-folders
    ```
 
@@ -64,6 +64,85 @@ streams.
 
 Subtitles are written next to the source file. For example, `movie.mp4` becomes
 `movie.srt`.
+
+## Providing media files and runtime workflow
+
+Important: do not COPY video files into the image at build time if you expect to add
+media later. Files baked into the image are static. Instead, expose host directories to
+the container with a bind mount so you can add or remove files on the host and the
+container will see the changes immediately.
+
+How files are made available to the app
+- Bind mount a host folder into the container (recommended):
+
+```bash
+docker run --rm -p 8000:8000 \
+   -v /absolute/path/on/host:/data/media \
+   --name srt docker-srt-folders:0.0.1
+```
+
+Files you copy into `/absolute/path/on/host` on the host appear immediately inside the
+container at `/data/media`.
+
+- Copy files into a running container (alternate):
+
+```bash
+docker cp /path/to/local/video.mp4 srt:/data/media/video.mp4
+```
+
+This writes the file directly into the container's filesystem. The bind-mount approach
+is usually easier because you can manage files on the host and keep them persistent.
+
+Runtime workflow (web UI)
+- Start the container with your media directory mounted as shown above.
+- Open http://localhost:8000 in your browser. The UI lists directories under the
+   configured `SUBTITLE_BASE_DIR` (default `/data`).
+- Tick the folders you want to scan, set options (recursive/overwrite), and click
+   **Create subtitles**. The application scans the selected folders at the time of the
+   request and writes `.srt` files next to your media files.
+
+Note: the web UI triggers a scan when you press the button — it does not continuously
+watch for filesystem changes. If you add new files after pressing the button, run the
+operation again or use the CLI.
+
+Runtime workflow (CLI)
+- Use the included CLI inside the container to run batch jobs or cron tasks:
+
+```bash
+# run inside the running container
+docker exec -it srt python3 subtitle_cli.py /data/media --overwrite
+
+# or run the CLI directly on the host (if you have dependencies installed)
+python3 subtitle_cli.py /absolute/path/on/host --overwrite
+```
+
+Permissions and SELinux
+- The container process needs read (and write for producing `.srt`) permissions on
+   the mounted host directory. Use absolute paths for mounts and ensure ownership/ACLs
+   are permissive enough (chown/chmod on the host) or run the container with a matching
+   UID/GID via `--user`.
+- On SELinux-enabled hosts, add `:z` or `:Z` to the volume flag: e.g.
+   `-v /host/path:/data/media:Z`.
+
+When to use `docker cp` vs bind mounts
+- Use bind mounts for ongoing work, network shares, or when you want files to persist
+   on the host outside the container lifecycle.
+- Use `docker cp` for quick one-off copies into a running container when a bind mount
+   isn't available.
+
+If you still don't see files in the UI
+- Verify the container has the mount you expect:
+
+```bash
+docker exec -it srt ls -la /data
+```
+
+- Check container logs for errors:
+
+```bash
+docker logs -f srt
+```
+
 
 ---
 
